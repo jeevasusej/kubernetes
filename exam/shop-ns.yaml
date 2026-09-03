@@ -1,0 +1,122 @@
+
+# 1. Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shop-ns-new
+
+---
+# 2. Deployments
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog
+  namespace: shop-ns-new
+  labels:
+    app: catalog
+    tier: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: catalog
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: catalog
+        tier: backend
+    spec:
+      containers:
+        - name: catalog
+          image: nginx
+          ports:
+            - containerPort: 80
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cart
+  namespace: shop-ns-new
+  labels:
+    app: cart
+    tier: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cart
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: cart
+        tier: backend
+    spec:
+      containers:
+        - name: cart
+          image: nginx
+          ports:
+            - containerPort: 80
+
+---
+# 3. Services — ClusterIP, port 80 -> containerPort 80
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog
+  namespace: shop-ns-new
+spec:
+  type: ClusterIP
+  selector:
+    app: catalog
+    tier: backend
+  ports:
+    - port: 80
+      targetPort: 80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cart
+  namespace: shop-ns-new
+spec:
+  type: ClusterIP
+  selector:
+    app: cart
+    tier: backend
+  ports:
+    - port: 80
+      targetPort: 80
+
+---
+# 4. Ingress — single resource, host shop.local-1, path-routes /catalog and /cart
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shop-ingress
+  namespace: shop-ns-new
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: shop.local-1
+      http:
+        paths:
+          - path: /catalog
+            pathType: Prefix
+            backend:
+              service:
+                name: catalog
+                port:
+                  number: 80
+          - path: /cart
+            pathType: Prefix
+            backend:
+              service:
+                name: cart
+                port:
+                  number: 80

@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ex5-ingress
+  namespace: ex5
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: ex5-strip-app1@kubernetescrd,ex5-strip-app2@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: multi-app.local
+      http:
+        paths:
+          - path: /app1
+            pathType: Prefix
+            backend:
+              service:
+                name: app1-service
+                port:
+                  number: 80
+          - path: /app2
+            pathType: Prefix
+            backend:
+              service:
+                name: app2-service
+                port:
+                  number: 80
