@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: inventorytracking-02-ingress
+  namespace: inventory02-ns
+  annotations:
+    # Applies 08-middleware.yaml to this router only.
+    # Format: <namespace>-<middleware-name>@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: inventory02-ns-inventorytracking-02-strip-web@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: inventorytracking02.local
+      http:
+        paths:
+          - path: /web
+            pathType: Prefix
+            backend:
+              service:
+                name: inventorytracking-02-svc
+                port:
+                  number: 80
+          - path: /status
+            pathType: Prefix
+            backend:
+              service:
+                name: inventorytracking-02-svc
+                port:
+                  number: 8080

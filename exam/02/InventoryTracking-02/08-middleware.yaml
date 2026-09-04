@@ -1,0 +1,19 @@
+# Strips the "/web" prefix before the request reaches Snipe-IT, so the app
+# (which knows nothing about being hosted under a subpath) still sees normal
+# root-relative paths ("/css/app.css", "/login", ...). Snipe-IT itself still
+# *generates* links with the "/web" prefix because APP_URL (see the ConfigMap)
+# is set to "http://inventorytracking02.local/web".
+#
+# This is a Traefik v3 CRD (ships with recent Rancher Desktop / k3s releases).
+# If `kubectl apply` reports "no matches for kind Middleware", your cluster is
+# on an older Traefik v2 CRD set - run `kubectl get crd | findstr traefik` and
+# change apiVersion below to traefik.containo.us/v1alpha1 instead.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: inventorytracking-02-strip-web
+  namespace: inventory02-ns
+spec:
+  stripPrefix:
+    prefixes:
+      - /web

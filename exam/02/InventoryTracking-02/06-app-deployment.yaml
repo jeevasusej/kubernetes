@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventorytracking-02
+  namespace: inventory02-ns
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: inventorytracking-02
+  template:
+    metadata:
+      labels:
+        app: inventorytracking-02
+    spec:
+      containers:
+        # --- Main Snipe-IT application ---
+        - name: snipe-it
+          image: snipe/snipe-it:v6.0.14
+          ports:
+            - containerPort: 80
+              name: http
+          envFrom:
+            - configMapRef:
+                name: inventorytracking-02-config
+          env:
+            - name: APP_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: inventorytracking-02-secret
+                  key: APP_KEY
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: inventorytracking-02-secret
+                  key: DB_PASSWORD
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 90
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+
+        # --- Lightweight sidecar so /status never depends on Snipe-IT or the database ---
+        - name: status
+          image: hashicorp/http-echo
+          args:
+            - -listen=:8080
+            - -text=OK
+          ports:
+            - containerPort: 8080
+              name: status
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 15
