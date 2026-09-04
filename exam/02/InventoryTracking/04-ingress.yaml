@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: inventorytracking-ingress
+  namespace: inventory-ns
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: inventorytracking.local
+      http:
+        paths:
+          - path: /web
+            pathType: Prefix
+            backend:
+              service:
+                name: inventorytracking-svc
+                port:
+                  number: 80
+          - path: /status
+            pathType: Prefix
+            backend:
+              service:
+                name: inventorytracking-svc
+                port:
+                  number: 80
