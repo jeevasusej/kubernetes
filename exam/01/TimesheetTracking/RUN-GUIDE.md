@@ -1,180 +1,683 @@
 # Running TimesheetTracking
 
-*Field Guide · Part 1 of 2*
+This guide explains how to deploy and test the TimesheetTracking application on the Kubernetes cluster supplied by Rancher Desktop. It uses Windows PowerShell commands.
 
-A start-to-finish runbook for standing up the TimesheetTracking exercise on Rancher Desktop, with every command, every expected result, and every real problem hit along the way.
+The completed application has these two endpoints:
 
-| | |
-|---|---|
-| **Namespace** | `timesheet-ns` |
-| **Hostname** | `timesheettracking.local` |
-| **Ingress class** | `traefik` |
-| **Folder** | `exam\01\TimesheetTracking` |
+| URL | Expected response |
+| --- | --- |
+| `http://timesheettracking.local/web` | `TimesheetTracking web service is running` |
+| `http://timesheettracking.local/status` | `TimesheetTracking service is healthy` |
+
+The application uses five Kubernetes files:
+
+| File | Kubernetes resource | Purpose |
+| --- | --- | --- |
+| `01-namespace.yaml` | Namespace | Creates an isolated area named `timesheet-ns`. |
+| `02-configmap.yaml` | ConfigMap | Stores the two responses and the Nginx configuration. |
+| `03-deployment.yaml` | Deployment | Runs two Nginx pods and mounts the ConfigMap data. |
+| `04-service.yaml` | Service | Provides one stable internal address for the pods. |
+| `05-ingress.yaml` | Ingress | Routes the hostname and URL paths to the Service. |
 
 ---
 
-## Before you start
+## 1. Prerequisites
 
-- [ ] **Rancher Desktop is installed and running** — its whale icon should be visible and settled, not spinning, in the Windows system tray.
-- [ ] **Kubernetes is turned on inside Rancher Desktop** — Preferences → Kubernetes → Enable Kubernetes.
-- [ ] **You have a Command Prompt window open** — regular Command Prompt is enough; nothing here needs Administrator rights except the two steps marked below.
-- [ ] **kubectl responds** — Rancher Desktop installs it for you, you don't need a separate download.
+Before creating the files, confirm the following:
 
----
+1. Rancher Desktop is installed and running.
+2. Kubernetes is enabled in Rancher Desktop.
+3. The Rancher Desktop Kubernetes context is active.
+4. `kubectl` is available from PowerShell.
+5. Traefik is running. Rancher Desktop normally installs it as the Ingress controller.
 
-## Seven steps, in order
+Run:
 
-Each step depends on the one before it — the namespace has to exist before anything can live inside it, and the cluster has to be awake before it will accept any of this.
-
-### 1. Create your workspace folder
-
-Every file for this exercise — the five YAML files, nothing else — lives in one folder. Creating it first keeps the whole exercise self-contained and easy to find again later.
-
-```bat
-:: creates the folder, then moves into it
-mkdir "D:\Projects\kubernates\exam\01\TimesheetTracking"
-cd /d "D:\Projects\kubernates\exam\01\TimesheetTracking"
-```
-
-The `/d` switch just makes sure Command Prompt also switches drive letter, in case you started on `C:`.
-
-### 2. Confirm the cluster is actually awake
-
-Rancher Desktop's Kubernetes takes a little while to boot after a fresh start — running your files against a cluster that isn't ready yet is the single most common source of confusing errors, so we check first.
-
-```bat
-:: which cluster kubectl is pointed at
+```powershell
 kubectl config current-context
-
-:: is the one node ready
 kubectl get nodes
-
-:: is the Traefik ingress controller running
-kubectl get pods -n kube-system | findstr traefik
-
-:: is an IngressClass named traefik registered
+kubectl get pods -n kube-system
 kubectl get ingressclass
 ```
 
-**Expect:** context `rancher-desktop`, one node `Ready`, a `traefik-…` pod showing `1/1 Running`, and an ingressclass named `traefik`.
+Expected results:
 
-> **If the node isn't ready yet** — Rancher Desktop can take several minutes to finish starting Kubernetes, especially the first time after a reboot. Wait and re-run `kubectl get nodes` every 30 seconds or so rather than assuming something is broken.
+- The current context is `rancher-desktop`.
+- The node status is `Ready`.
+- A Traefik pod is `Running`.
+- An IngressClass named `traefik` exists.
 
-### 3. Write the five YAML files
-
-Namespace, ConfigMap, Deployment, Service, then Ingress — save each one in the folder from Step 1. What each field means is covered file-by-file in **Part 2: Understanding TimesheetTracking**; this guide only concerns itself with running them.
-
-Filenames used throughout this guide: `01-namespace.yaml`, `02-configmap.yaml`, `03-deployment.yaml`, `04-service.yaml`, `05-ingress.yaml`.
-
-### 4. Apply the files, in order
-
-"Applying" a file tells Kubernetes: *make the real cluster match this description.* The namespace has to be created before anything can be placed inside it, so the numbered order matters — one command with several `-f` flags works as long as the namespace file comes first in the list.
-
-```bat
-kubectl apply -f 01-namespace.yaml -f 02-configmap.yaml -f 03-deployment.yaml -f 04-service.yaml -f 05-ingress.yaml
-```
-
-**Expect:** five lines, each ending in `created` — `namespace/timesheet-ns created`, `configmap/…created`, and so on.
-
-### 5. Check that everything actually came up
-
-Applying a file only submits a request — it doesn't guarantee the result worked. These checks confirm the whole chain is connected end to end.
-
-```bat
-:: pod, deployment, service all in one view
-kubectl get all -n timesheet-ns
-
-:: does the Service have a real pod behind it
-kubectl get endpoints -n timesheet-ns
-
-:: does the Ingress have an address assigned
-kubectl get ingress -n timesheet-ns
-```
-
-**Expect:** the pod shows `1/1 Running`, the endpoints list is **not empty** (an IP address, not blank), and the Ingress `ADDRESS` column is **not blank** — a blank address means Traefik hasn't picked up the rule yet.
-
-### 6. Point your computer at the hostname
-
-Kubernetes now knows about `timesheettracking.local` — but Windows doesn't, yet. The hosts file is the short list Windows checks before asking the internet how to find a name, and this step adds one line to it. It's the one step here that needs an **elevated (Administrator)** Command Prompt.
-
-```bat
-:: run from an Administrator Command Prompt
-echo 127.0.0.1 timesheettracking.local >> C:\Windows\System32\drivers\etc\hosts
-```
-
-Prefer a text editor instead? Right-click Notepad → "Run as administrator", open `C:\Windows\System32\drivers\etc\hosts`, and add the line `127.0.0.1    timesheettracking.local` at the bottom.
-
-### 7. Test it
-
-```bat
-curl http://timesheettracking.local/web
-curl http://timesheettracking.local/status
-```
-
-**Expect:** `TimesheetTracking web service is running` and `TimesheetTracking service is healthy`.
-
-> **Getting a Windows / IIS 404 page instead?** See Incident 01 below — something else on your machine already owns port 80.
+If the node is not ready, wait for Rancher Desktop to finish starting and run the commands again.
 
 ---
 
-## Incident log
+## 2. Create and open the project folder
 
-Three problems worth knowing about — real issues encountered while building this exact exercise on Windows with Rancher Desktop, not hypothetical edge cases.
+Run:
 
-| Symptom | Cause | Fix |
-|---|---|---|
-| **01 —** curl returns an IIS "HTTP Error 404" page, not your text, even though the Ingress ADDRESS looked fine. | Windows' built-in web server (IIS, service name `W3SVC`) was already listening on port 80, so Rancher Desktop's own port-forwarding couldn't bind to it — every request to port 80 was quietly being answered by IIS instead of Traefik. | Confirm with `Get-NetTCPConnection -LocalPort 80` in PowerShell, then stop IIS with `net stop W3SVC` from an Administrator prompt. Restart it later with `net start W3SVC` if you need it for something else. |
-| **02 —** kubectl says "actively refused" right after starting Rancher Desktop. | The Kubernetes control plane genuinely hadn't finished starting yet — this is normal, especially on the first start after a reboot, and can take several minutes. | Wait, then re-run `kubectl get nodes`. No fix needed beyond patience. |
-| **03 —** hosts file "Access is denied" when adding the line. | The system hosts file is protected; a normal Command Prompt or PowerShell window doesn't have permission to write to it. | Reopen Command Prompt (or Notepad) with "Run as administrator", then retry the same command. |
+```powershell
+New-Item -ItemType Directory -Force -Path "D:\Projects\kubernetes\exam\01\TimesheetTracking"
+Set-Location "D:\Projects\kubernetes\exam\01\TimesheetTracking"
+```
+
+Save all five YAML files below in this folder. Use spaces for YAML indentation. Do not use tabs.
 
 ---
 
-## Cleanup
+## 3. Create the Kubernetes files
 
-Deleting the namespace removes everything inside it in one shot — the ConfigMap, Deployment, Pod, and Service. The Ingress is also namespaced, so it goes with it; only the hosts-file line is outside the cluster and needs removing separately.
+### File 1: `01-namespace.yaml`
 
-```bat
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: timesheet-ns
+```
+
+This creates the namespace used by every other resource.
+
+### File 2: `02-configmap.yaml`
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: timesheettracking-content
+  namespace: timesheet-ns
+data:
+  web: |
+    TimesheetTracking web service is running
+  status: |
+    TimesheetTracking service is healthy
+  default.conf: |
+    server {
+        listen 80;
+        server_name _;
+        default_type text/plain;
+
+        location / {
+            root /usr/share/nginx/html;
+        }
+    }
+```
+
+This ConfigMap contains three keys:
+
+- `web` becomes a file named `web`.
+- `status` becomes a file named `status`.
+- `default.conf` becomes the Nginx server configuration.
+
+The two response files do not have file extensions. The `default_type text/plain;` setting is therefore important. It tells Nginx to return them as plain text. Without this setting, Nginx can return `application/octet-stream`, which causes Chrome to download the files instead of displaying them.
+
+### File 3: `03-deployment.yaml`
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: timesheettracking
+  namespace: timesheet-ns
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: timesheettracking
+  template:
+    metadata:
+      labels:
+        app: timesheettracking
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: content
+              mountPath: /usr/share/nginx/html
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+      volumes:
+        - name: content
+          configMap:
+            name: timesheettracking-content
+            items:
+              - key: web
+                path: web
+              - key: status
+                path: status
+        - name: nginx-config
+          configMap:
+            name: timesheettracking-content
+            items:
+              - key: default.conf
+                path: default.conf
+```
+
+Important: the name `default.conf` must be identical in all three places:
+
+```yaml
+# 02-configmap.yaml
+default.conf: |
+
+# 03-deployment.yaml, volume item
+key: default.conf
+path: default.conf
+
+# 03-deployment.yaml, container mount
+subPath: default.conf
+```
+
+If the Deployment requests `default_type.conf` while the ConfigMap contains `default.conf`, the pods cannot start because the requested ConfigMap key does not exist.
+
+### File 4: `04-service.yaml`
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: timesheettracking-svc
+  namespace: timesheet-ns
+spec:
+  type: ClusterIP
+  selector:
+    app: timesheettracking
+  ports:
+    - port: 80
+      targetPort: 80
+```
+
+This Service selects pods that contain the label `app: timesheettracking`. It accepts traffic on Service port 80 and forwards that traffic to container port 80.
+
+### File 5: `05-ingress.yaml`
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: timesheettracking-ingress
+  namespace: timesheet-ns
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: timesheettracking.local
+      http:
+        paths:
+          - path: /web
+            pathType: Prefix
+            backend:
+              service:
+                name: timesheettracking-svc
+                port:
+                  number: 80
+          - path: /status
+            pathType: Prefix
+            backend:
+              service:
+                name: timesheettracking-svc
+                port:
+                  number: 80
+```
+
+Both paths go to the same Service. The original request path is retained, so Nginx receives `/web` or `/status` and reads the file with the same name from `/usr/share/nginx/html`.
+
+---
+
+## 4. Apply the files
+
+Confirm that PowerShell is in the folder containing the five files:
+
+```powershell
+Get-Location
+Get-ChildItem *.yaml
+```
+
+Apply the files in order:
+
+```powershell
+kubectl apply -f 01-namespace.yaml
+kubectl apply -f 02-configmap.yaml
+kubectl apply -f 03-deployment.yaml
+kubectl apply -f 04-service.yaml
+kubectl apply -f 05-ingress.yaml
+```
+
+The first application normally reports `created`. Running the same commands again after a change normally reports `configured` or `unchanged`.
+
+`kubectl apply` submits the required state to Kubernetes. It does not prove that the containers started successfully. Complete the verification steps below.
+
+---
+
+## 5. Wait for the Deployment
+
+Run:
+
+```powershell
+kubectl rollout status deployment/timesheettracking -n timesheet-ns
+```
+
+Expected result:
+
+```text
+deployment "timesheettracking" successfully rolled out
+```
+
+This means the new Deployment revision has two available pods.
+
+If the command remains waiting or reports that it exceeded its progress deadline, inspect the pods as described in the troubleshooting section.
+
+---
+
+## 6. Verify every Kubernetes resource
+
+### Check the Deployment and pods
+
+```powershell
+kubectl get deployment -n timesheet-ns
+kubectl get pods -n timesheet-ns
+```
+
+Expected Deployment values:
+
+```text
+READY   UP-TO-DATE   AVAILABLE
+2/2     2            2
+```
+
+Expected pod values:
+
+```text
+READY   STATUS    RESTARTS
+1/1     Running   0
+1/1     Running   0
+```
+
+The generated pod names will be different on every Deployment revision.
+
+### Check the Service
+
+```powershell
+kubectl get service timesheettracking-svc -n timesheet-ns
+```
+
+Expected values include:
+
+```text
+TYPE        PORT(S)
+ClusterIP   80/TCP
+```
+
+### Check the Service endpoints
+
+```powershell
+kubectl get endpointslice -n timesheet-ns -l kubernetes.io/service-name=timesheettracking-svc
+```
+
+The EndpointSlice should contain pod IP addresses on port 80. These are the pods selected by the Service.
+
+The older command below can also show the endpoint, but recent Kubernetes versions display a deprecation warning for it:
+
+```powershell
+kubectl get endpoints timesheettracking-svc -n timesheet-ns
+```
+
+### Check the Ingress
+
+```powershell
+kubectl get ingress timesheettracking-ingress -n timesheet-ns
+```
+
+Expected values include:
+
+```text
+CLASS     HOSTS
+traefik   timesheettracking.local
+```
+
+The `ADDRESS` value depends on the local Rancher Desktop network configuration.
+
+---
+
+## 7. Add the local hostname to Windows
+
+`timesheettracking.local` is a local training hostname. Public DNS does not know this name. Windows must map it to the local Ingress entry point.
+
+Open Notepad as Administrator:
+
+1. Open the Start menu.
+2. Search for Notepad.
+3. Right-click Notepad and select **Run as administrator**.
+4. Open `C:\Windows\System32\drivers\etc\hosts`.
+5. Add this line:
+
+```text
+127.0.0.1 timesheettracking.local
+```
+
+6. Save the file.
+
+Check the entry from PowerShell:
+
+```powershell
+Get-Content C:\Windows\System32\drivers\etc\hosts | Select-String timesheettracking.local
+```
+
+If Windows has cached an earlier lookup, clear the DNS cache:
+
+```powershell
+ipconfig /flushdns
+```
+
+Do not add the same hostname more than once with different IP addresses.
+
+---
+
+## 8. Test both endpoints
+
+### Test from PowerShell
+
+Use `curl.exe`, not `curl`:
+
+```powershell
+curl.exe -i http://timesheettracking.local/web
+curl.exe -i http://timesheettracking.local/status
+```
+
+In Windows PowerShell 5.1, `curl` is normally an alias for `Invoke-WebRequest`. That command may display a script-execution warning. `curl.exe` runs the actual curl program and avoids that warning.
+
+Expected `/web` response:
+
+```text
+HTTP/1.1 200 OK
+Content-Type: text/plain
+
+TimesheetTracking web service is running
+```
+
+Expected `/status` response:
+
+```text
+HTTP/1.1 200 OK
+Content-Type: text/plain
+
+TimesheetTracking service is healthy
+```
+
+The exact header order can differ. The important values are HTTP status `200`, content type `text/plain`, and the expected response body.
+
+### Test from Chrome
+
+Open:
+
+```text
+http://timesheettracking.local/web
+http://timesheettracking.local/status
+```
+
+The browser displays one line of plain text for each URL. This exercise does not contain a designed HTML user interface.
+
+If Chrome previously downloaded `/web`, test with a cache-busting query string:
+
+```text
+http://timesheettracking.local/web?v=2
+```
+
+You can also use an Incognito window or clear the cached data for the hostname.
+
+---
+
+## 9. Apply later changes correctly
+
+When a YAML file changes, apply that file again. For example:
+
+```powershell
+kubectl apply -f 03-deployment.yaml
+kubectl rollout status deployment/timesheettracking -n timesheet-ns
+```
+
+The Nginx configuration is mounted with `subPath`. A ConfigMap change to `default.conf` is not automatically copied into an already-running subPath mount. After changing `02-configmap.yaml`, apply it and restart the Deployment:
+
+```powershell
+kubectl apply -f 02-configmap.yaml
+kubectl rollout restart deployment/timesheettracking -n timesheet-ns
+kubectl rollout status deployment/timesheettracking -n timesheet-ns
+```
+
+Then test both URLs again.
+
+---
+
+## 10. Troubleshooting
+
+Use the checks in this order. Each check identifies a different part of the request path.
+
+### Problem: Deployment shows `1/2` and new pods show `Error`
+
+Run:
+
+```powershell
+kubectl get pods -n timesheet-ns
+kubectl get replicasets -n timesheet-ns
+kubectl describe deployment timesheettracking -n timesheet-ns
+kubectl describe pod <failing-pod-name> -n timesheet-ns
+```
+
+Replace `<failing-pod-name>` with the actual pod name.
+
+If the pod cannot start, the useful information is usually under **Events** at the bottom of `kubectl describe pod`. Container logs may be unavailable because Nginx never started.
+
+For this exercise, check for an error indicating that a ConfigMap key does not exist. The ConfigMap defines `default.conf`; therefore, the Deployment must also use `default.conf`. A reference to `default_type.conf` is incorrect.
+
+During a failed rolling update, Kubernetes can keep a pod from the previous ReplicaSet running. That is why the output can contain one running old pod and two failing new pods. Correct the Deployment and apply it again.
+
+### Problem: Chrome downloads `web` instead of displaying it
+
+Inspect the response header:
+
+```powershell
+curl.exe -I http://timesheettracking.local/web
+```
+
+Correct result:
+
+```text
+Content-Type: text/plain
+```
+
+Incorrect result:
+
+```text
+Content-Type: application/octet-stream
+```
+
+`application/octet-stream` tells a browser that the response is general binary data, so Chrome downloads it. The custom Nginx configuration fixes this by setting `default_type text/plain;`.
+
+Check the configuration loaded inside a running pod:
+
+```powershell
+kubectl exec deployment/timesheettracking -n timesheet-ns -- cat /etc/nginx/conf.d/default.conf
+```
+
+It must contain:
+
+```nginx
+default_type text/plain;
+```
+
+If it does not, apply the ConfigMap and Deployment, then restart:
+
+```powershell
+kubectl apply -f 02-configmap.yaml
+kubectl apply -f 03-deployment.yaml
+kubectl rollout restart deployment/timesheettracking -n timesheet-ns
+kubectl rollout status deployment/timesheettracking -n timesheet-ns
+```
+
+After the server is correct, use `/web?v=2` once to avoid an old Chrome cache entry.
+
+### Problem: PowerShell shows a script-execution warning
+
+PowerShell is running the `Invoke-WebRequest` alias instead of the curl executable. Use:
+
+```powershell
+curl.exe http://timesheettracking.local/web
+```
+
+Alternatively, use:
+
+```powershell
+Invoke-WebRequest http://timesheettracking.local/web -UseBasicParsing
+```
+
+### Problem: `The underlying connection was closed`
+
+First check whether the pods are restarting or a rollout is incomplete:
+
+```powershell
+kubectl get pods -n timesheet-ns
+kubectl rollout status deployment/timesheettracking -n timesheet-ns
+```
+
+Then inspect current and previous container logs:
+
+```powershell
+kubectl logs <pod-name> -n timesheet-ns
+kubectl logs <pod-name> -n timesheet-ns --previous
+```
+
+`--previous` displays logs from the container instance that ran before the latest restart.
+
+### Problem: Service has no endpoints
+
+Run:
+
+```powershell
+kubectl get pods -n timesheet-ns --show-labels
+kubectl describe service timesheettracking-svc -n timesheet-ns
+```
+
+Confirm all of these values match exactly:
+
+```text
+Pod label:        app=timesheettracking
+Service selector: app=timesheettracking
+Container port:   80
+Service target:   80
+```
+
+The Service cannot send traffic to a pod that does not match its selector or is not ready.
+
+### Problem: The Service works but the hostname does not
+
+Test the Service without the Ingress:
+
+```powershell
+kubectl port-forward service/timesheettracking-svc 8080:80 -n timesheet-ns
+```
+
+Keep that PowerShell window open. In another PowerShell window, run:
+
+```powershell
+curl.exe -i http://127.0.0.1:8080/web
+curl.exe -i http://127.0.0.1:8080/status
+```
+
+If these commands work, the pods and Service are working. Check the Ingress and Windows hosts-file entry next:
+
+```powershell
+kubectl describe ingress timesheettracking-ingress -n timesheet-ns
+Get-Content C:\Windows\System32\drivers\etc\hosts | Select-String timesheettracking.local
+```
+
+Press `Ctrl+C` in the port-forward window when the test is complete.
+
+### Problem: An IIS page appears instead of TimesheetTracking
+
+Another Windows process may own port 80. Check it:
+
+```powershell
+Get-NetTCPConnection -LocalPort 80 -ErrorAction SilentlyContinue | Select-Object LocalAddress,LocalPort,State,OwningProcess
+```
+
+If IIS is using the port, open PowerShell as Administrator and stop it temporarily:
+
+```powershell
+Stop-Service W3SVC
+```
+
+Restart IIS later if it is needed by another local project:
+
+```powershell
+Start-Service W3SVC
+```
+
+Do not stop IIS when another required application is using it.
+
+### Problem: An update is broken and must be reverted
+
+View the Deployment revisions:
+
+```powershell
+kubectl rollout history deployment/timesheettracking -n timesheet-ns
+```
+
+Undo the latest Deployment change:
+
+```powershell
+kubectl rollout undo deployment/timesheettracking -n timesheet-ns
+kubectl rollout status deployment/timesheettracking -n timesheet-ns
+```
+
+This restores the previous Deployment pod template. It does not restore an earlier ConfigMap value.
+
+---
+
+## 11. Cleanup
+
+Delete the namespace only when the whole exercise is no longer required:
+
+```powershell
 kubectl delete namespace timesheet-ns
 ```
 
-Then remove the `timesheettracking.local` line from the hosts file the same way you added it (Administrator Notepad), and run `net start W3SVC` if you stopped IIS in Incident 01 and want it back.
+This also deletes the ConfigMap, Deployment, ReplicaSets, pods, Service, EndpointSlices, and Ingress inside the namespace.
+
+The Windows hosts-file entry is outside Kubernetes, so remove this line separately:
+
+```text
+127.0.0.1 timesheettracking.local
+```
 
 ---
 
-## Copy-paste reference
+## Command summary
 
-```bat
-:: 1 — folder
-mkdir "D:\Projects\kubernates\exam\01\TimesheetTracking"
-cd /d "D:\Projects\kubernates\exam\01\TimesheetTracking"
-
-:: 2 — cluster check
+```powershell
+# Confirm the cluster
 kubectl config current-context
 kubectl get nodes
-kubectl get pods -n kube-system | findstr traefik
 kubectl get ingressclass
 
-:: 4 — apply
-kubectl apply -f 01-namespace.yaml -f 02-configmap.yaml -f 03-deployment.yaml -f 04-service.yaml -f 05-ingress.yaml
+# Apply the resources
+kubectl apply -f 01-namespace.yaml
+kubectl apply -f 02-configmap.yaml
+kubectl apply -f 03-deployment.yaml
+kubectl apply -f 04-service.yaml
+kubectl apply -f 05-ingress.yaml
 
-:: 5 — verify
-kubectl get all -n timesheet-ns
-kubectl get endpoints -n timesheet-ns
+# Verify the resources
+kubectl rollout status deployment/timesheettracking -n timesheet-ns
+kubectl get deployment -n timesheet-ns
+kubectl get pods -n timesheet-ns
+kubectl get service -n timesheet-ns
+kubectl get endpointslice -n timesheet-ns
 kubectl get ingress -n timesheet-ns
 
-:: 6 — hosts file (Administrator prompt)
-echo 127.0.0.1 timesheettracking.local >> C:\Windows\System32\drivers\etc\hosts
-
-:: 7 — test
-curl http://timesheettracking.local/web
-curl http://timesheettracking.local/status
-
-:: cleanup
-kubectl delete namespace timesheet-ns
+# Test the application
+curl.exe -i http://timesheettracking.local/web
+curl.exe -i http://timesheettracking.local/status
 ```
 
----
-
-*Part 1 of 2 — TimesheetTracking Field Guide. See **Part 2: Understanding TimesheetTracking** (`CONCEPTS-GUIDE.md`) for what each file and each Kubernetes idea actually means.*
-
-**Live version:** https://claude.ai/code/artifact/28da4d10-1fc3-46ac-9617-b765ba86c6fd
+For explanations of the Kubernetes resources, names, connections, and request flow, see `CONCEPTS-GUIDE.md`.
