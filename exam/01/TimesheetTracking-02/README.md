@@ -31,17 +31,21 @@ whole page.
 ## How a request reaches the browser
 
 ```
-Website files → Docker image → Kubernetes Pods → Service → Ingress → Browser
+Browser → Ingress → Service → Pod → Nginx → Browser
 ```
 
 In plain words:
 
-1. **Website files** — the HTML, CSS, and JavaScript files that make up the dashboard.
-2. **Docker image** — those files are packaged together with a small web server (nginx) into one image called `timesheettracking:v1`.
-3. **Kubernetes Pods** — Kubernetes runs that image inside 2 Pods (2 identical running copies, for reliability).
-4. **Service** — a Service gives those 2 Pods one stable internal address, so nothing else needs to know which Pod is which.
-5. **Ingress** — the Ingress lets requests from outside the cluster (like your browser) reach the Service, using a hostname (`timesheettracking02.local`) and paths (`/web`, `/status`).
-6. **Browser** — you type the address, and the response travels back the same path.
+1. **Browser** — you type `http://timesheettracking02.local/web` (or `/status`).
+2. **Ingress** — Traefik reads the hostname and path, and works out which Service should handle it.
+3. **Service** — `timesheettracking-02-svc` picks one of the 2 healthy Pods to send the request to.
+4. **Pod** — the chosen Pod, running the `timesheettracking:v1` image, receives the request.
+5. **Nginx** — inside that Pod, the nginx web server answers with the dashboard page or the status JSON.
+6. **Browser** — the response travels all the way back and is shown on screen.
+
+(Getting the image itself into that Pod in the first place is a separate,
+earlier step: `Website files → Docker image → Kubernetes Pod`. That only
+happens once, when you build the image and deploy it — not on every request.)
 
 ## What's in this folder, and why
 
@@ -66,20 +70,23 @@ same Docker image can be reused by more than one Kubernetes deployment:
 ## Building the image (Rancher Desktop)
 
 The image must be built once, using Rancher Desktop's own Docker engine, before
-it can be deployed:
+it can be deployed. On this Windows setup, the Docker engine is reached through
+Rancher Desktop's WSL distribution, so the build runs like this:
 
-```bash
-cd docker/TimesheetTracking
-docker build -t timesheettracking:v1 .
+```powershell
+wsl -d rancher-desktop -- sh -lc 'cd "/mnt/d/Projects/kubernetes/docker/TimesheetTracking" && docker build -t timesheettracking:v1 .'
 ```
 
 This creates a local image named `timesheettracking:v1`. It is **not** uploaded
 anywhere — it only exists on this machine, inside Rancher Desktop.
 
-## Deploying to Kubernetes (in order)
+## Deploying to Kubernetes (recommended order)
 
-The files must be applied in this order, because a Deployment can't be created
-inside a namespace that doesn't exist yet, and so on:
+The namespace must exist before anything else, since a Deployment can't be
+created inside a namespace that doesn't exist yet. Applying Deployment →
+Service → Ingress after that is a recommended, beginner-friendly order (not a
+strict requirement — Kubernetes will happily accept a Service or Ingress that
+points at a Deployment that hasn't shown up yet, and just wait for it):
 
 ```bash
 cd exam/01/TimesheetTracking-02
@@ -111,8 +118,11 @@ port `80`, and the Ingress showing an address in the `ADDRESS` column.
 
 ## Reaching it from a browser
 
-Kubernetes knows the hostname `timesheettracking02.local` — but Windows does
-not, until you tell it. Add this line to the Windows hosts file:
+Traefik (the Ingress controller) already has a routing rule for the hostname
+`timesheettracking02.local` — that's what `04-ingress.yaml` created. But
+Windows itself has no idea what `timesheettracking02.local` means yet, until
+you tell it. Add this line to the Windows hosts file so it maps that hostname
+to `127.0.0.1`, where Traefik is listening:
 
 **File:** `C:\Windows\System32\drivers\etc\hosts`
 
