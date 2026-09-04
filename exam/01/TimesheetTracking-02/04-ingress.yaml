@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: timesheettracking-02-ingress
+  namespace: timesheet02-ns
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: timesheettracking02.local
+      http:
+        paths:
+          - path: /web
+            pathType: Prefix
+            backend:
+              service:
+                name: timesheettracking-02-svc
+                port:
+                  number: 80
+          - path: /status
+            pathType: Prefix
+            backend:
+              service:
+                name: timesheettracking-02-svc
+                port:
+                  number: 80

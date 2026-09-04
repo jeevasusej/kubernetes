@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimesheetTracking Dashboard</title>
+<link rel="stylesheet" href="/web/styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">TT</span>
+    <span class="brand-name">TimesheetTracking</span>
+  </div>
+  <div class="topbar-meta">
+    <span id="last-updated">Last updated: --</span>
+  </div>
+</header>
+
+<main class="dashboard">
+
+  <section class="stats" aria-label="Summary statistics">
+    <div class="stat-card">
+      <span class="stat-label">Total Hours</span>
+      <span class="stat-value" id="stat-total-hours">482.5</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Billable Hours</span>
+      <span class="stat-value" id="stat-billable-hours">398.0</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Pending Approvals</span>
+      <span class="stat-value" id="stat-pending">12</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Active Projects</span>
+      <span class="stat-value" id="stat-projects">7</span>
+    </div>
+  </section>
+
+  <section class="table-section" aria-label="Timesheet entries">
+    <div class="table-header">
+      <h2>Recent Timesheet Entries</h2>
+      <span class="hint">Click a column header to sort</span>
+    </div>
+
+    <div class="table-wrap">
+      <table id="timesheet-table">
+        <thead>
+          <tr>
+            <th data-sort="string">Employee</th>
+            <th data-sort="string">Project</th>
+            <th data-sort="date">Date</th>
+            <th data-sort="number">Hours</th>
+            <th data-sort="string">Approval Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Alice Johnson</td>
+            <td>Website Redesign</td>
+            <td data-value="2026-09-01">2026-09-01</td>
+            <td data-value="8.0">8.0</td>
+            <td><span class="badge badge-approved">Approved</span></td>
+          </tr>
+          <tr>
+            <td>Brian Lee</td>
+            <td>Mobile App</td>
+            <td data-value="2026-09-01">2026-09-01</td>
+            <td data-value="7.5">7.5</td>
+            <td><span class="badge badge-pending">Pending</span></td>
+          </tr>
+          <tr>
+            <td>Carla Gomez</td>
+            <td>Website Redesign</td>
+            <td data-value="2026-09-02">2026-09-02</td>
+            <td data-value="6.0">6.0</td>
+            <td><span class="badge badge-approved">Approved</span></td>
+          </tr>
+          <tr>
+            <td>David Kim</td>
+            <td>Data Migration</td>
+            <td data-value="2026-09-02">2026-09-02</td>
+            <td data-value="8.0">8.0</td>
+            <td><span class="badge badge-rejected">Rejected</span></td>
+          </tr>
+          <tr>
+            <td>Elena Petrova</td>
+            <td>Mobile App</td>
+            <td data-value="2026-09-03">2026-09-03</td>
+            <td data-value="5.5">5.5</td>
+            <td><span class="badge badge-pending">Pending</span></td>
+          </tr>
+          <tr>
+            <td>Farid Haidari</td>
+            <td>Cloud Setup</td>
+            <td data-value="2026-09-03">2026-09-03</td>
+            <td data-value="8.0">8.0</td>
+            <td><span class="badge badge-approved">Approved</span></td>
+          </tr>
+          <tr>
+            <td>Grace Chen</td>
+            <td>Data Migration</td>
+            <td data-value="2026-09-04">2026-09-04</td>
+            <td data-value="4.0">4.0</td>
+            <td><span class="badge badge-pending">Pending</span></td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3">Total (this view)</td>
+            <td id="table-hours-total">--</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <span>TimesheetTracking &mdash; sample data for demonstration only</span>
+</footer>
+
+<script src="/web/app.js"></script>
+</body>
+</html>
