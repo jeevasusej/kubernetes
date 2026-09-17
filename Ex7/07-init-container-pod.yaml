@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: init-demo
+  namespace: ex7
+  labels:
+    app: init-demo
+spec:
+  initContainers:
+    - name: wait-for-dependency
+      image: busybox:1.36
+      command: ["sh", "-c", "echo 'Waiting for nginx-service...'; sleep 15; until wget -qO- http://nginx-service > /dev/null 2>&1; do echo 'nginx-service is not reachable yet'; sleep 2; done; echo 'nginx-service is reachable'"]
+
+  containers:
+    - name: app
+      image: nginx:alpine
+      ports:
+        - containerPort: 80

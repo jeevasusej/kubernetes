@@ -1,0 +1,14 @@
+# Internal stable address for both API pods.
+apiVersion: v1
+kind: Service
+metadata:
+  name: person-api
+  namespace: person-app
+spec:
+  type: ClusterIP
+  selector:
+    app: person-api
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http

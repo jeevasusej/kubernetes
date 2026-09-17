@@ -1,0 +1,26 @@
+# Create the namespace used by every namespaced resource in this exercise.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: person-app
+  labels:
+    project: person-app
+
+---
+# Static PersistentVolume for a local, single-node learning cluster.
+# The PV is cluster-scoped, so it does not have a namespace.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-pv
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  persistentVolumeReclaimPolicy: Retain
+  volumeMode: Filesystem
+  hostPath:
+    path: /mnt/data/mysql
+    type: DirectoryOrCreate

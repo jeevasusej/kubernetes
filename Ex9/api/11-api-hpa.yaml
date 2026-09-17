@@ -1,0 +1,24 @@
+# HorizontalPodAutoscaler for the API tier.
+# Needs the metrics-server add-on running in the cluster (minikube:
+# `minikube addons enable metrics-server`; most managed clusters already
+# have it). Requires the `resources.requests.cpu` set on the container
+# (already set in 07-api-deployment.yaml) — HPA scales off % of that request.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: person-api-hpa
+  namespace: person-app
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: person-api
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60   # scale out once avg CPU > 60% of the 100m request

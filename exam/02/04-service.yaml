@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: timesheettracking-svc
+  namespace: timesheet-ns
+spec:
+  selector:
+    app: timesheettracking
+
+  ports:
+    - name: web
+      protocol: TCP
+      port: 80
+      targetPort: 80
+
+    - name: status
+      protocol: TCP
+      port: 81
+      targetPort: 80
+
+  type: ClusterIP

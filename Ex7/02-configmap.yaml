@@ -1,0 +1,18 @@
+# ConfigMap = a way to store non-secret config data as key/value pairs,
+# then inject that data into Pods as env vars, command-line args, or files.
+#
+# NOTE: unlike a Secret, everything under `data:` here is stored and read as
+# a plain string. APP_PASSWORD/APP_USERNAME below just happen to *look*
+# base64-encoded (they decode to "password"/"admin") — Kubernetes will NOT
+# decode them for you. A Pod reading APP_PASSWORD gets the literal text
+# "cGFzc3dvcmQ=", not "password". If you want real base64 handling, use a
+# Secret instead of a ConfigMap.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: ex7
+data:
+  APP_COLOR: Green
+  APP_USERNAME: YWRtaW4=
+  APP_PASSWORD: cGFzc3dvcmQ=

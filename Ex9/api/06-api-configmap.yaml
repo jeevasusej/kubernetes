@@ -1,0 +1,10 @@
+# Non-secret settings used by the API to locate MySQL.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  namespace: person-app
+data:
+  DB_HOST: "mysql"
+  DB_PORT: "3306"
+  PORT: "3000"

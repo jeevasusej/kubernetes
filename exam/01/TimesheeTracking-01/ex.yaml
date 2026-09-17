@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: timesheet-ns-01
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: timesheettracking01
+  namespace: timesheet-ns-01
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: timesheettracking01
+
+  template:
+    metadata:
+      labels:
+        app: timesheettracking01
+
+    spec:
+      containers:
+
+        # Main application
+        - name: timesheettracking01-web
+          image: hashicorp/http-echo:latest
+          args:
+            - "-text=TimesheetTracking"
+            - "-listen=:80"
+          ports:
+            - containerPort: 80
+
+        # Status endpoint
+        - name: timesheettracking01-status
+          image: hashicorp/http-echo:latest
+          args:
+            - "-text=Healthy"
+            - "-listen=:81"
+          ports:
+            - containerPort: 81
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: timesheettracking01-svc
+  namespace: timesheet-ns-01
+spec:
+  selector:
+    app: timesheettracking01
+
+  ports:
+    - name: web
+      protocol: TCP
+      port: 80
+      targetPort: 80
+
+    - name: status
+      protocol: TCP
+      port: 81
+      targetPort: 81
+
+  type: ClusterIP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: timesheettracking01-ingress
+  namespace: timesheet-ns-01
+
+spec:
+  ingressClassName: traefik
+
+  rules:
+    - host: timesheettracking01.local
+      http:
+        paths:
+
+          - path: /web
+            pathType: Prefix
+            backend:
+              service:
+                name: timesheettracking01-svc
+                port:
+                  number: 80
+
+          - path: /status
+            pathType: Prefix
+            backend:
+              service:
+                name: timesheettracking01-svc
+                port:
+                  number: 81

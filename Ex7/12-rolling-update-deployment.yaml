@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rollout-demo
+  namespace: ex7
+  annotations:
+    kubernetes.io/change-cause: "v2: initial deploy of nginx 1.28"
+
+spec:
+  replicas: 3
+
+  revisionHistoryLimit: 5
+  minReadySeconds: 5
+  progressDeadlineSeconds: 60
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 2
+
+  selector:
+    matchLabels:
+      app: rollout-demo
+
+  template:
+    metadata:
+      labels:
+        app: rollout-demo
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.28
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 2
+            periodSeconds: 2

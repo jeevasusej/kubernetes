@@ -1,0 +1,13 @@
+{
+  "name": "person-api",
+  "version": "1.0.0",
+  "description": "REST API for the MySQL person table",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "mysql2": "^3.9.7"
+  }
+}

@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: timesheettracking
+  namespace: timesheet-ns
+  annotations:
+    kubernetes.io/change-cause: "Initial deployment with nginx:1.25"
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: timesheettracking
+
+  template:
+    metadata:
+      labels:
+        app: timesheettracking
+
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.25
+          ports:
+            - containerPort: 80
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"
+
+          env:
+            - name: API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: timesheettracking-secret
+                  key: api-token
+
+          volumeMounts:
+            - name: web-content
+              mountPath: /usr/share/nginx/html
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 5
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+      volumes:
+        - name: web-content
+          configMap:
+            name: timesheettracking-web-content

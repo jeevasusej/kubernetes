@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: timesheettracking-web-content
+  namespace: timesheet-ns
+data:
+  index.html: |
+    <html>
+      <body>
+        <h1>Timesheet Tracking Service - Now Configurable!</h1>
+      </body>
+    </html>
+
+  status: |
+    Healthy

@@ -1,0 +1,49 @@
+# Frontend Deployment. Build & push web/app/ as an image (see README) and
+# set `image:` below. This is the pod real users hit.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: person-web
+  namespace: person-app
+  labels:
+    app: person-web
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: person-web
+  template:
+    metadata:
+      labels:
+        app: person-web
+    spec:
+      containers:
+        - name: person-web
+          image: person-web:1.0     # built locally in web/app/ (see README)
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 20

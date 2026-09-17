@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: memory-limit-demo
+  namespace: ex7
+spec:
+  containers:
+    - name: stress
+      image: polinux/stress
+      resources:
+        requests:
+          memory: "50Mi"
+          cpu: "100m"
+        limits:
+          memory: "100Mi"
+          cpu: "250m"
+      command: ["stress"]
+      args: ["--vm", "1", "--vm-bytes", "200M", "--vm-hang", "1"]

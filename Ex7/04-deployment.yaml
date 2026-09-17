@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  namespace: ex7
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+          ports:
+            - containerPort: 80
+          # Option 1: pull one specific key from the ConfigMap into an env var.
+          env:
+            - name: APP_COLOR_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: APP_COLOR
+            - name: APP_USERNAME_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: APP_USERNAME
+            - name: APP_PASSWORD_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: APP_PASSWORD
+            # Secret keys use secretKeyRef instead of configMapKeyRef — same
+            # shape, but the value arrives already base64-decoded.
+            - name: APP_USERNAME_SECRET_ENV
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: APP_USERNAME
+            - name: APP_PASSWORD_SECRET_ENV
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: APP_PASSWORD
+
+          # Option 2: instead of listing keys one by one, pull EVERY key in
+          # the ConfigMap/Secret in as an env var (name becomes the env var name).
+          # envFrom:
+          #   - configMapRef:
+          #       name: app-config
+          #   - secretRef:
+          #       name: app-secret
+
+          # Option 3: mount the ConfigMap/Secret as files instead of env vars —
+          # each key becomes a file, file content = the (decoded, for Secrets) value.
+          # volumeMounts:
+          #   - name: config-volume
+          #     mountPath: /etc/config
+          #   - name: secret-volume
+          #     mountPath: /etc/secret
+          #     readOnly: true
+      # volumes:
+      #   - name: config-volume
+      #     configMap:
+      #       name: app-config
+      #   - name: secret-volume
+      #     secret:
+      #       secretName: app-secret

@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-data
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: "local-path"
+  hostPath:
+    path: /data
+    type: DirectoryOrCreate
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ke3-pv-claim
+  namespace: ex7
+spec:
+  accessModes:
+    - ReadWriteOnce
+  # Empty string opts out of the default StorageClass so this claim binds to
+  # pv-data instead of triggering the local-path provisioner.
+  storageClassName: "local-path"
+  resources:
+    requests:
+      storage: 512Mi
+  volumeName: ke3-pv-data

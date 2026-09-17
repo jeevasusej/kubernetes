@@ -1,0 +1,29 @@
+credentials:
+  root:
+    user: root
+    password: root123
+    host: "%"
+
+serverVersion: "8.4.0"
+serverInstances: 2
+routerInstances: 1
+
+tls:
+  useSelfSigned: true
+
+datadirVolumeClaimTemplate:
+  accessModes: ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+podSpec:
+  containers:
+    - name: mysql
+      resources:
+        requests:
+          memory: "512Mi"
+          cpu: "500m"
+        limits:
+          memory: "1Gi"
+          cpu: "1000m"
